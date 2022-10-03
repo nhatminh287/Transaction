@@ -148,46 +148,47 @@ as
 		end catch
 go
 
--- Cau 4
-CREATE PROC p_XoaTaiKhoan
-	@matk char(10),
-	@kq int output
+-- Cau 4 Xóa tài khoản
+-- 20120289 - Võ Minh Hiếu
+CREATE
+--ALTER
+PROC p_XoaTaiKhoan
+	@matk char(10)
 AS
 BEGIN TRANSACTION
 	BEGIN TRY
 	--Kiem tra ton tai tai khoan
-		IF NOT EXISTS (SELECT * FROM TaiKhoan WHERE MATK = @matk)
+		IF NOT EXISTS (SELECT * FROM TaiKhoan WHERE MaTK = @matk)
 			BEGIN
-				PRINT '@matk + không tồn tại'
+				PRINT @matk + N'không tồn tại.'
 				ROLLBACK TRANSACTION
-				RETURN 
+				RETURN 1
 			END
 		ELSE
 		-- Kiem tra tai khoan da thua hien giao dich chua
 			BEGIN
-				IF EXISTS (SELECT * FROM GiaoDich WHERE MATK = @matk)
+				IF EXISTS (SELECT * FROM GiaoDich WHERE MaTK = @matk)
 					BEGIN
-						PRINT 'Tài khoản + @matk + đã thực hiện giao dịch, không thể xóa'
+						PRINT  @matk + N'đã thực hiện giao dịch, không thể xóa'
 						ROLLBACK TRANSACTION
-						RETURN
+						RETURN 1
 					END
 				ELSE
 				-- Xoa tai khoan
 					BEGIN
 						DELETE FROM TaiKhoan
-						WHERE MATK = @matK
+						WHERE MaTK = @matK
 					END
 			END
 	END TRY
 	--Xu ly loi
 	BEGIN CATCH
-		PRINT ' Xóa tài khoản + @matk + không thành công'
-		SET @kq = 1
+		PRINT N'Xóa tài khoản không thành công'
 		ROLLBACK TRANSACTION
 	END CATCH
 	--Xoa tai khoan thanh cong
-	PRINT 'Xóa tài khoản + @matk + thành công'
-	SET @kq = 0
+	PRINT N'Xóa tài khoản thành công'
+	RETURN 0
 COMMIT TRANSACTION
 GO
 
