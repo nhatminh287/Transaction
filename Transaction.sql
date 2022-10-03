@@ -1,4 +1,5 @@
 --Cau 1
+-- 19120585 - Nguyễn Hải Nhật Minh
 CREATE PROC Xemsodu
 	@matk char(10)
 AS
