@@ -96,9 +96,10 @@ as
 go
 
 --Cau 3
+-- Lê Hoàng Chương - 18600033
 DROP PROCEDURE CapNhatThongTin;
 GO
-create proc CapNhatThongTin @matk char(10), @ngaylap date, @sodu int, @trangthai bit
+create proc CapNhatThongTin @matk char(10), @ngaylap date, @sodu int, @trangthai nvarchar(30)
 as
 	begin transaction
 		begin try
