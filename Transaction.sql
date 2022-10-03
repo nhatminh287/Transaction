@@ -37,7 +37,8 @@ BEGIN TRANSACTION
 go
 
 --Cau 2
-create proc ThemTaiKhoan @matk char(10), @ngaylap date, @sodu int, @trangthai bit, @loaitk char(10), @makh char(10)
+-- 19120565 - Nguyễn Văn Lợi
+create proc ThemTaiKhoan @matk char(10), @ngaylap date, @sodu int, @trangthai nvarchar, @loaitk char(10), @makh char(10)
 as
 	begin transaction
 		begin try
@@ -60,7 +61,7 @@ as
 			--Kiem tra trang thai tai khoan
 			if @trangthai is null
 			begin
-				set @trangthai = 1	
+				set @trangthai = N'Đang dùng'	
 			end
 
 			--Kiem tra loai tai khoan
