@@ -293,3 +293,4 @@ begin catch
 end catch
 print 'Cập nhật thành công!'
 commit
+go
