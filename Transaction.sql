@@ -194,3 +194,102 @@ BEGIN TRANSACTION
 COMMIT TRANSACTION
 GO
 
+--Phần BTVN
+
+
+--Bài 2
+-- 19120585-Nguyễn Hải Nhật Minh (câu 2.1 -> 2.3)
+--2.1.Thêm nguoi thân
+create proc ThemNguoiThan
+@maGV char(5), @ten nvarchar(20),
+@ngSinh datetime, @phai nchar(3)
+as
+begin transaction
+begin try
+	if not exists (select * from GIAOVIEN gv 
+			where gv.MAGV = @maGV)
+		begin
+			print 'Lỗi mã giáo viên!'
+			rollback transaction
+		end
+	else
+		begin
+			insert into NGUOITHAN values(@maGV, @ten, @ngSinh, @phai)
+			
+		end
+end try
+begin catch
+	print 'Đã xảy ra lỗi'
+	rollback transaction
+end catch
+print 'Thêm thành công'
+commit
+go
+
+--2.2.Thêm giáo viên
+create proc ThemGiaoVien
+@maGV char(5), @hoten nvarchar(40), @luong float, @phai nchar(3),
+@ngSinh datetime, @diachi nvarchar(100), @gvqlcm char(5),
+@mabm nchar(5)
+as
+begin transaction
+begin try
+	--Kiểm tra ràng buộc khóa ngoại với GVQLCM
+	if not exists (select * from GIAOVIEN gv 
+			where gv.MAGV =  @gvqlcm)
+		begin
+			print 'GVQLCM không hợp lệ!'
+			rollback transaction
+			return
+		end
+	--Kiểm tra ràng buộc khóa ngoại với MABM
+	if not exists (select * from BOMON bm
+			where bm.MABM = @mabm)
+		begin
+			print 'MABM không hợp lệ!'
+			rollback transaction
+			return
+		end
+	--Thêm mới giá trị vào bảng GIAOVIEN
+	insert into GIAOVIEN values(@maGV, @hoten , @luong , @phai ,@ngSinh, @diachi , @gvqlcm ,@mabm )
+	
+end try
+begin catch
+	print 'Đã xảy ra lỗi'
+	rollback transaction
+end catch
+print 'Thêm thành công'
+commit
+go
+--2.3.Cập nhật trưởng bộ môn
+create proc Update_TruongBM
+@mabm nchar(5), @truongBM char(5)
+as
+begin transaction
+begin try
+	--Kiểm tra @mabm có tồn tại
+	if not exists(select * from BOMON bm 
+			where bm.mabm = @mabm)
+		begin
+			print 'MABM không tồn tại!'
+			rollback transaction
+			return
+		end
+	--Kiểm tra TRUONGBM cập nhật có hợp lệ?
+	if not exists(select * from GIAOVIEN gv
+			where gv.MAGV = @truongBM)
+		begin
+			print 'TRUONGBM không hợp lệ!'
+			rollback transaction
+			return
+		end
+	update BOMON 
+	set TRUONGBM = @truongBM
+	WHERE MABM = @mabm
+end try
+begin catch
+	print 'Đã xảy ra lỗi'
+	rollback transaction
+end catch
+print 'Cập nhật thành công!'
+commit
