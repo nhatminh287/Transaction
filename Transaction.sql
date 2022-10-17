@@ -195,7 +195,376 @@ COMMIT TRANSACTION
 GO
 
 --Phần BTVN
+--Võ Minh Hiếu
+-- 20120289
+--Bài 1
+--1. Thêm công việc
+CREATE 
+--ALTER
+PROC USP_THEMCONGVIEC
+	@madt char(3),
+	@sott int,
+	@tencv nvarchar(40),
+	@ngaybd datetime,
+	@ngaykt datetime
+AS
+BEGIN TRAN
+	BEGIN TRY
+		IF @madt = NULL OR @sott = NULL OR @tencv = NULL OR @ngaybd = NULL OR @ngaykt = NULL
+			BEGIN
+				PRINT N'Thông tin nhập vào không được chứa giá trị rỗng'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+	
+		IF EXISTS (SELECT * FROM CONGVIEC WHERE MADT = @madt AND SOTT = @sott)
+			BEGIN
+				PRINT @madt +' + ' + CAST (@sott AS varchar) + N' đã tồn tại công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
 
+		IF EXISTS (SELECT * FROM CONGVIEC WHERE TENCV = @tencv )
+			BEGIN
+				PRINT @tencv + N'Đã tồn tại'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		 
+		 IF EXISTS (SELECT * FROM DETAI DT WHERE DT.NGAYBD > @ngaybd OR @ngaybd > DT.NGAYKT)
+			BEGIN
+				PRINT N'Ngày bắt đầu công việc phải sau ngày bắt đầu đề tài và trước ngày kết thúc đề tài'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		IF @ngaybd > @ngaykt
+			BEGIN
+				PRINT N'Ngày bắt đầu công việc phải trước ngày kết thúc công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		INSERT INTO CONGVIEC
+		VALUES (@madt, @sott, @tencv, @ngaybd, @ngaykt)
+	END TRY
+
+	BEGIN CATCH
+		PRINT N'Lỗi hệ thống'
+		ROLLBACK TRAN
+	END CATCH
+COMMIT TRAN
+RETURN 0
+GO
+
+--2. Cập nhật công việc
+CREATE 
+--ALTER
+PROC USP_CAPNHATCONGVIEC
+	@madt char(3),
+	@sott int,
+	@tencv nvarchar(40),
+	@ngaybd datetime,
+	@ngaykt datetime
+AS
+BEGIN TRAN
+	BEGIN TRY
+		IF @madt = NULL OR @sott = NULL OR @tencv = NULL OR @ngaybd = NULL OR @ngaykt = NULL
+			BEGIN
+				PRINT N'Thông tin nhập vào không được chứa giá trị rỗng'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+	
+		IF NOT EXISTS (SELECT * FROM CONGVIEC WHERE MADT = @madt AND SOTT = @sott)
+			BEGIN
+				PRINT @madt +' + ' + CAST (@sott AS varchar) + N' không tồn tại công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		IF EXISTS (SELECT * FROM CONGVIEC WHERE TENCV = @tencv AND  MADT = @madt AND SOTT = @sott AND @ngaybd = NGAYBD AND @ngaykt = NGAYKT)
+			BEGIN
+				PRINT N'Thông tin ngoài khóa phải có sự thay đổi so với thông tin ban đầu'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		 
+		 IF EXISTS (SELECT * FROM DETAI DT WHERE DT.NGAYBD > @ngaybd OR @ngaybd > DT.NGAYKT)
+			BEGIN
+				PRINT N'Ngày bắt đầu công việc phải sau ngày bắt đầu đề tài và trước ngày kết thúc đề tài'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		IF @ngaybd > @ngaykt
+			BEGIN
+				PRINT N'Ngày bắt đầu công việc phải trước ngày kết thúc công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		UPDATE CONGVIEC
+		SET TENCV = @tencv, NGAYBD = @ngaybd, NGAYKT = @ngaykt
+		WHERE MADT = @madt AND SOTT = @sott
+	END TRY
+	BEGIN CATCH
+		PRINT N'Lỗi hệ thống'
+		ROLLBACK TRAN
+	END CATCH
+COMMIT TRAN
+RETURN 0
+GO
+
+
+--3. Xóa công việc
+CREATE 
+--ALTER
+PROC USP_XOACONGVIEC
+	@madt char(3),
+	@stt int
+AS
+BEGIN TRAN
+	BEGIN TRY
+		IF NOT EXISTS (SELECT * FROM CONGVIEC WHERE MADT = @madt AND SOTT = @stt)
+			BEGIN
+				PRINT @madt +' + ' + CAST (@stt AS varchar) + N' không tồn tại công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF EXISTS (SELECT * FROM THAMGIADT WHERE MADT = @madt AND STT = @stt)
+			BEGIN
+				PRINT N'Công việc đã được phân công'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		DELETE FROM CONGVIEC
+		WHERE MADT = @madt AND SOTT = @stt
+
+		DELETE FROM DETAI
+		WHERE MADT NOT IN (SELECT MADT FROM CONGVIEC)
+	END TRY
+	BEGIN CATCH
+		PRINT N'Lỗi hệ thống'
+		ROLLBACK TRAN
+	END CATCH
+COMMIT TRAN
+RETURN 0
+GO
+
+--4. Thêm đề tài
+CREATE
+--ALTER
+PROC USP_THEMDETAI
+	@madt char(3),
+	@tendt nvarchar(100),
+	@capql nvarchar(40),
+	@kp float,
+	@ngaybd datetime,
+	@ngaykt datetime,
+	@macd nchar(4),
+	@gvcndt char(5)
+AS
+BEGIN TRAN
+	BEGIN TRY
+		IF @madt = NULL OR @tendt = NULL OR @capql = NULL OR @kp = NULL OR @ngaybd = NULL OR @ngaykt = NULL OR @macd = NULL OR @gvcndt = NULL
+			BEGIN
+				PRINT N'Thông tin nhập vào không được chứa giá trị rỗng'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		IF NOT EXISTS (SELECT * FROM CHUDE WHERE MACD = @macd)
+			BEGIN
+				PRINT @madt + N' không tồn tại mã chủ đề'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF NOT EXISTS (SELECT * FROM GIAOVIEN WHERE MAGV = @gvcndt)
+			BEGIN
+				PRINT @gvcndt + N' không tồn tại mã giáo viên'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF @ngaybd > @ngaykt
+			BEGIN
+				PRINT N'Ngày bắt đầu công việc phải trước ngày kết thúc công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF EXISTS (SELECT * FROM DETAI WHERE MADT = @madt)
+			BEGIN
+				PRINT @madt + N' đã tồn tại mã đề tài'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF EXISTS (SELECT * FROM DETAI WHERE TENDT = @tendt)
+			BEGIN
+				PRINT @tendt + N' đã tồn tại tên đề tài'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF NOT EXISTS (SELECT * FROM BOMON BM, KHOA K WHERE BM.TRUONGBM = @gvcndt OR K.TRUONGKHOA = @gvcndt)
+			BEGIN
+				PRINT N'GVCNDT phải là trưởng bộ môn hoặc trưởng khoa'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF  @capql = N'ĐHQG' AND @kp < (SELECT KINHPHI FROM DETAI WHERE CAPQL = N'Trường')
+			BEGIN
+				PRINT N'Cấp quản lý ĐHQG phải có kinh phí cao hơn cấp trường'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF  @capql = N'Nhà nước' AND @kp < (SELECT KINHPHI FROM DETAI WHERE CAPQL = N'Trường' OR CAPQL = N'ĐHQG')
+			BEGIN
+				PRINT N'Cấp quản lý Nhà nước phải có kinh phí cao hơn cấp trường hoặc cấp ĐHQG'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		INSERT INTO DETAI
+		VALUES (@madt, @tendt, @capql, @kp, @ngaybd, @ngaykt, @macd, @gvcndt)
+	END TRY
+	BEGIN CATCH
+		PRINT N'Lỗi hệ thống'
+		ROLLBACK TRAN
+	END CATCH
+COMMIT TRAN
+RETURN 0
+GO
+
+--5.Cập nhật đề tài
+CREATE
+--ALTER
+PROC USP_CAPNHATDETAI
+	@madt char(3),
+	@tendt nvarchar(100),
+	@capql nvarchar(40),
+	@kp float,
+	@ngaybd datetime,
+	@ngaykt datetime,
+	@macd nchar(4),
+	@gvcndt char(5)
+AS
+BEGIN TRAN
+	BEGIN TRY
+		IF @madt = NULL OR @tendt = NULL OR @capql = NULL OR @kp = NULL OR @ngaybd = NULL OR @ngaykt = NULL OR @macd = NULL OR @gvcndt = NULL
+			BEGIN
+				PRINT N'Thông tin nhập vào không được chứa giá trị rỗng'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+
+		IF NOT EXISTS (SELECT * FROM CHUDE WHERE MACD = @macd)
+			BEGIN
+				PRINT @madt + N' không tồn tại mã chủ đề'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF NOT EXISTS (SELECT * FROM GIAOVIEN WHERE MAGV = @gvcndt)
+			BEGIN
+				PRINT @gvcndt + N' không tồn tại mã giáo viên'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF @ngaybd > @ngaykt
+			BEGIN
+				PRINT N'Ngày bắt đầu công việc phải trước ngày kết thúc công việc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF NOT EXISTS (SELECT * FROM DETAI WHERE MADT = @madt)
+			BEGIN
+				PRINT @madt + N' không tồn tại mã đề tài'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF EXISTS (SELECT * FROM DETAI WHERE MADT = @madt AND TENDT = @tendt AND CAPQL = @capql AND KINHPHI = @kp AND NGAYBD = @ngaybd AND NGAYKT = @ngaykt
+													AND MACD = @macd AND GVCNDT = @gvcndt)
+			BEGIN
+				PRINT N'Thông tin ngoài khóa phải có sự thay đổi so với thông tin ban đầu'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF NOT EXISTS (SELECT * FROM BOMON BM, KHOA K WHERE BM.TRUONGBM = @gvcndt OR K.TRUONGKHOA = @gvcndt)
+			BEGIN
+				PRINT N'GVCNDT phải là trưởng bộ môn hoặc trưởng khoa'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF  @capql = N'ĐHQG' AND @kp < (SELECT KINHPHI FROM DETAI WHERE CAPQL = N'Trường')
+			BEGIN
+				PRINT N'Cấp quản lý ĐHQG phải có kinh phí cao hơn cấp trường'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF  @capql = N'Nhà nước' AND @kp < (SELECT KINHPHI FROM DETAI WHERE CAPQL = N'Trường' OR CAPQL = N'ĐHQG')
+			BEGIN
+				PRINT N'Cấp quản lý Nhà nước phải có kinh phí cao hơn cấp trường hoặc cấp ĐHQG'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF @capql = N'Trường' AND EXISTS (SELECT * FROM DETAI WHERE MADT = @madt AND CAPQL != N'Trường')
+			BEGIN
+				PRINT N'Cấp quản lý chỉ được nâng lên không được hạ xuống'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF @capql = N'ĐHQG' AND EXISTS (SELECT * FROM DETAI WHERE MADT = @madt AND CAPQL = N'Nhà nước')
+			BEGIN
+				PRINT N'Cấp quản lý chỉ được nâng lên không được hạ xuống'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		UPDATE DETAI
+		SET TENDT = @tendt, CAPQL = @capql, KINHPHI = @kp, NGAYBD = @ngaybd, NGAYKT = @ngaykt, MACD = @macd, GVCNDT = @gvcndt
+		WHERE MADT = @madt
+	END TRY
+	BEGIN CATCH
+		PRINT N'Lỗi hệ thống'
+		ROLLBACK TRAN
+	END CATCH
+COMMIT TRAN
+RETURN 0
+GO
+
+--6. Xóa đề tài
+CREATE 
+--ALTER
+PROC USP_XOADETAI
+	@madt char(3)
+AS 
+BEGIN TRAN
+	BEGIN TRY
+		IF NOT EXISTS (SELECT * FROM DETAI WHERE MADT = @madt)
+			BEGIN
+				PRINT @madt + N' không tồn tại mã đề tài'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF EXISTS (SELECT * FROM THAMGIADT WHERE MADT = @madt)
+			BEGIN
+				PRINT N'Đề tài đã được tham gia'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		IF GETDATE() < (SELECT NGAYKT FROM DETAI WHERE MADT = @madt)
+			BEGIN
+				PRINT N'Đề tài chưa kết thúc'
+				ROLLBACK TRAN
+				RETURN 1
+			END
+		DELETE FROM DETAI
+		WHERE MADT = @madt
+	END TRY
+	BEGIN CATCH
+		PRINT N'Lỗi hệ thống'
+		ROLLBACK TRAN
+	END CATCH
+COMMIT TRAN
+RETURN 0
+GO
 
 --Bài 2
 -- 19120585-Nguyễn Hải Nhật Minh (câu 2.1 -> 2.3)
