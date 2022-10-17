@@ -701,8 +701,8 @@ as
 		end catch
 go
 
--- Câu 2.5 Thêm tham gia đề tài
-create proc pThemThamGiaDeTai @MaGV char(5), @MaDT char(3), @STT int, @PhuCap float, @KetQua nvarchar(40)
+-- Câu 2.6 Cập nhật tham gia đề tài
+create proc pCapNhatThamGiaDeTaiGiaoVien @MaGV char(5), @MaDT char(3),  @STT int, @PHUCAP char(5), @KETQUA char(5)
 as
 	begin transaction
 		begin try
@@ -714,17 +714,70 @@ as
 				return 0
 			end
 
-			--Kiem tra ma de tai va stt co trong bang CONGVIEC hay ko
-			if not exists(select * from CONGVIEC where CONGVIEC.MADT = @MaDT and CONGVIEC.SOTT = @STT)
+			--Kiem tra đề tài
+			if not exists(select * from DETAI where DETAI.MADT = @MaDT)
 			begin
-				print N'Mã giáo viên và stt không tồn tại trong bảng công việc!'
+				print N'Mã đề tài không tồn tại!'
+				rollback transaction
+				return 0
+			end
+
+
+			--Kiem tra tham gia đề tài
+			if not exists(select * from THAMGIADETAI where THAMGIADETAI.MADT = @MaDT ANDTHAMGIADETAI.MaGV = @MaGV AND THAMGIADETAI.STT = @STT  )
+			begin
+				print N'Mã tham gia không tồn tại!'
+				rollback transaction
+				return 0
+			end
+
+			--Cập nhật tham gia đề tài
+			UPDATE THAMGIADT SET THAMGIADT.PHUCAP = @PHUCAP AND THAMGIADT.KETQUA = @KETQUA WHERE THAMGIADETAI.MADT = @MaDT AND THAMGIADETAI.MaGV = @MaGV AND THAMGIADETAI.STT = @STT 
+			print N'Cập nhật thành công 1 tham gia đề tài!'
+			commit transaction
+			return 1
+		end try
+		
+		begin catch
+			raiserror(N'Lỗi hệ thống!', 16,1)
+			rollback transaction
+			return 0
+		end catch
+go
+
+-- Câu 2.7 Xóa tham gia đề tài
+create proc pXoaThamGiaDeTaiGiaoVien @MaGV char(5), @MaDT char(3),  @STT int
+as
+	begin transaction
+		begin try
+			--Kiem tra ma giao vien
+			if not exists(select * from GIAOVIEN where GIAOVIEN.MAGV = @MaGV)
+			begin
+				print N'Mã giáo viên không tồn tại!'
+				rollback transaction
+				return 0
+			end
+
+			--Kiem tra đề tài
+			if not exists(select * from DETAI where DETAI.MADT = @MaDT)
+			begin
+				print N'Mã đề tài không tồn tại!'
+				rollback transaction
+				return 0
+			end
+
+
+			--Kiem tra tham gia đề tài
+			if not exists(select * from THAMGIADETAI where THAMGIADETAI.MADT = @MaDT AND THAMGIADETAI.MaGV = @MaGV AND THAMGIADETAI.STT = @STT  )
+			begin
+				print N'Mã tham gia không tồn tại!'
 				rollback transaction
 				return 0
 			end
 
 			--Them vao tham gia de tai
-			insert into THAMGIADT values(@MaGV, @MaDT, @STT, @PhuCap, @KetQua)
-			print N'Thêm thành công 1 tham gia đề tài!'
+			DELETE FROM THAMGIADT WHERE THAMGIADETAI.MADT = @MaDT ANDTHAMGIADETAI.MaGV = @MaGV AND THAMGIADETAI.STT = @STT 
+			print N'Xóa thành công 1 tham gia đề tài!'
 			commit transaction
 			return 1
 		end try
