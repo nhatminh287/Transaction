@@ -663,3 +663,76 @@ end catch
 print 'Cập nhật thành công!'
 commit
 go
+
+
+-- 19120565 - Nguyễn Văn Lợi (2.4, 2.5)
+--Câu 2.4: Cập nhật chủ nhiệm đề tài
+create proc pCapNhatChuNhiemDeTai @MaGV char(5), @MaDT char(3)
+as
+	begin transaction
+		begin try
+			--Kiem tra ma giao vien
+			if not exists(select * from GIAOVIEN where GIAOVIEN.MAGV = @MaGV)
+			begin
+				print N'Mã giáo viên không tồn tại!'
+				rollback transaction
+				return 0
+			end
+
+			--Kiem tra ma de tai
+			if not exists(select * from DETAI where DETAI.MADT = @MaDT)
+			begin
+				print N'Mã đề tài không tồn tại!'
+				rollback transaction
+				return 0
+			end
+			
+			--Tien hanh cap nhat chu nhiem de tai
+			update DETAI
+			set GVCNDT = @MaGV
+			where MADT = @MaDT
+			commit transaction
+			return 1
+		end try
+		begin catch
+			raiserror(N'Lỗi hệ thống!', 16,1)
+			rollback transaction
+			return 0
+		end catch
+go
+
+-- Câu 2.5 Thêm tham gia đề tài
+create proc pThemThamGiaDeTai @MaGV char(5), @MaDT char(3), @STT int, @PhuCap float, @KetQua nvarchar(40)
+as
+	begin transaction
+		begin try
+			--Kiem tra ma giao vien
+			if not exists(select * from GIAOVIEN where GIAOVIEN.MAGV = @MaGV)
+			begin
+				print N'Mã giáo viên không tồn tại!'
+				rollback transaction
+				return 0
+			end
+
+			--Kiem tra ma de tai va stt co trong bang CONGVIEC hay ko
+			if not exists(select * from CONGVIEC where CONGVIEC.MADT = @MaDT and CONGVIEC.SOTT = @STT)
+			begin
+				print N'Mã giáo viên và stt không tồn tại trong bảng công việc!'
+				rollback transaction
+				return 0
+			end
+
+			--Them vao tham gia de tai
+			insert into THAMGIADT values(@MaGV, @MaDT, @STT, @PhuCap, @KetQua)
+			print N'Thêm thành công 1 tham gia đề tài!'
+			commit transaction
+			return 1
+		end try
+		
+		begin catch
+			raiserror(N'Lỗi hệ thống!', 16,1)
+			rollback transaction
+			return 0
+		end catch
+go
+
